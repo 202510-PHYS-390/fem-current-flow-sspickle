@@ -2,6 +2,7 @@
 """
 PDN with geometric resistors - resistors are just narrow copper traces!
 Simple, robust, and demonstrates the concept clearly.
+
 """
 import os
 import sys
@@ -11,30 +12,36 @@ import subprocess
 
 # Geometry (mm)
 pcb_width = 50.0
-pcb_height = 40.0
+pcb_height = 150.0
 
 # Power traces
-reg_trace_width = 3.5
-bus_width = 2.5
+reg_trace_width = 5
+bus_width = 5
 branch_width = 1.5
 
 # Load positions (two parallel resistive loads)
 # These mark where branches connect to the top of resistors
-load1_pos = (25.0, 15.0)  # Moved up to make resistors taller
-load2_pos = (35.0, 15.0)
+load1_pos = (25.0, 100.0)  # Moved up to make resistors taller
+load2_pos = (35.0, 100.0)
 
 # Ground
-ground_y = 5.0
-ground_height = 4.0
+ground_y = 10.0
+ground_height = 5.0
+
+# Load resistors (NARROW vertical connectors with different widths)
+# Positioned EXACTLY between ground and branch, no overlap!
+resistor_bottom = ground_y + ground_height  # Exactly at top of ground
+resistor_top = load1_pos[1]  # Exactly at bottom of branch
+resistor_height = resistor_top - resistor_bottom
 
 # Resistor dimensions - narrow enough to show effect, wide enough to mesh properly
 # R_2D = L / (σ_eff * w) where σ_eff = 2086 S
-resistor1_width = 0.2  # mm - 200 µm wide (lower resistance)
-resistor2_width = 0.1  # mm - 100 µm wide (higher resistance, 2x current density)
-resistor_length = 20.0  # mm
+resistor1_width = .2
+resistor2_width = .1  # mm - 100 µm wide (higher resistance, 2x current density)
+resistor_length = resistor_height  # mm
 
 # Material (uniform copper everywhere!)
-copper_thickness = 0.035  # mm
+copper_thickness = 0.070  # mm
 copper_conductivity = 5.96e7  # S/m
 sigma_eff = copper_conductivity * copper_thickness / 1000.0
 
@@ -63,13 +70,15 @@ gmsh.model.add("pdn_geo")
 print("\nBuilding geometry...")
 
 # Regulator trace
+print("adding rect 'reg':", (0, pcb_height/2 - reg_trace_width/2, 0, 15, reg_trace_width))
 reg = gmsh.model.occ.addRectangle(0, pcb_height/2 - reg_trace_width/2, 0,
                                    15, reg_trace_width)
 
 # Main bus  
+print("adding rect 'bus'", (15, pcb_height/2 - bus_width/2, 0, 30, bus_width))
 bus = gmsh.model.occ.addRectangle(15, pcb_height/2 - bus_width/2, 0,
                                    30, bus_width)
-
+print("adding rect branch1:", (load1_pos[0] - branch_width/2, load1_pos[1], 0, branch_width, pcb_height/2 - load1_pos[1]))
 # Branches to loads (stop EXACTLY at load position, no overlap!)
 branch1 = gmsh.model.occ.addRectangle(load1_pos[0] - branch_width/2, load1_pos[1], 0,
                                        branch_width, pcb_height/2 - load1_pos[1])
@@ -83,12 +92,6 @@ power_net = gmsh.model.occ.fuse([(2, reg)],
 
 # Ground return - just main plane (no extra returns needed)
 ground = gmsh.model.occ.addRectangle(2, ground_y, 0, 45, ground_height)
-
-# Load resistors (NARROW vertical connectors with different widths)
-# Positioned EXACTLY between ground and branch, no overlap!
-resistor_bottom = ground_y + ground_height  # Exactly at top of ground
-resistor_top = load1_pos[1]  # Exactly at bottom of branch
-resistor_height = resistor_top - resistor_bottom
 
 load1_res = gmsh.model.occ.addRectangle(
     load1_pos[0] - resistor1_width/2,
