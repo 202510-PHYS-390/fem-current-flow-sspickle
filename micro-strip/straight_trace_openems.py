@@ -4,6 +4,7 @@ Straight PCB Trace EM Simulator
 Based on working FreeCAD/KiCAD example, simplified for education
 
 Easily modifiable parameters for students to explore EM wave propagation
+
 """
 
 import math
